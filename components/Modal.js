@@ -4,8 +4,18 @@ import { modalState } from "../atoms/modalAtom";
 import { Dialog, Transition } from "@headlessui/react";
 import { Fragment } from "react";
 import { CameraIcon } from "@heroicons/react/outline";
+import { useSession } from "next-auth/react";
+import {
+  addDoc,
+  collection,
+  serverTimestamp,
+  updateDoc,
+} from "@firebase/firestore";
+import { ref, getDownloadURL, uploadString } from "@firebase/storage";
+import { db, storage } from "../firebase";
 
 function Modal() {
+  const { data: session } = useSession();
   const [open, setOpen] = useRecoilState(modalState);
   const filePickerRef = useRef(null);
   const captionRef = useRef(null);
@@ -16,6 +26,28 @@ function Modal() {
     if (loading) return;
 
     setLoading(true);
+
+    const docRef = await addDoc(collection(db, "posts"), {
+      username: session.user.username,
+      caption: captionRef.current.value,
+      profileImg: session.user.image,
+      timestamp: serverTimestamp(),
+    });
+
+    const imageRef = ref(storage, `posts/${docRef.id}/image`);
+
+    await uploadString(imageRef, selectedFile, "data_url").then(
+      async (snapshot) => {
+        const downladURL = await getDownloadURL(imageRef);
+        await updateDoc(doc(db, "posts", docRef.id), {
+          image: downladURL,
+        });
+      }
+    );
+
+    setOpen(false);
+    setLoading(false);
+    setSelectedFile(null);
   };
 
   const addImageToPost = (e) => {
@@ -30,7 +62,7 @@ function Modal() {
   };
 
   return (
-    <Transition.Root show={open === undefined ? false : open} as={Fragment}>
+    <Transition.Root show={open} as={Fragment}>
       <Dialog
         as="div"
         className="fixed z-10 inset-0 overflow-y-auto"
@@ -115,9 +147,11 @@ function Modal() {
                 <div className="mt-5 sm:mt-6">
                   <button
                     type="button"
+                    disabled={!selectedFile}
                     className="inline-flex justify-center w-full rounded-md border border-transparent shadow-sm px-4 py-2 bg-black text-base font-medium text-white hover:bg-gray-900 focus:outline-none disabled-cursor-not-allowed disabled:hover:bg-gray-300"
+                    onClick={uploadPost}
                   >
-                    Upload Post
+                    {loading ? "Uploading..." : "Upload Post"}
                   </button>
                 </div>
               </div>
