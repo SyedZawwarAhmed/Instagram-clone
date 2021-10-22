@@ -6,6 +6,7 @@ import { Fragment } from "react";
 import { CameraIcon } from "@heroicons/react/outline";
 import { useSession } from "next-auth/react";
 import {
+  doc,
   addDoc,
   collection,
   serverTimestamp,
@@ -38,9 +39,9 @@ function Modal() {
 
     await uploadString(imageRef, selectedFile, "data_url").then(
       async (snapshot) => {
-        const downladURL = await getDownloadURL(imageRef);
+        const downloadURL = await getDownloadURL(imageRef);
         await updateDoc(doc(db, "posts", docRef.id), {
-          image: downladURL,
+          image: downloadURL,
         });
       }
     );
@@ -62,7 +63,7 @@ function Modal() {
   };
 
   return (
-    <Transition.Root show={open} as={Fragment}>
+    <Transition.Root show={open === true ? true : open === false ? false : false} as={Fragment}>
       <Dialog
         as="div"
         className="fixed z-10 inset-0 overflow-y-auto"
